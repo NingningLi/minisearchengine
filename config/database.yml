@@ -1,0 +1,7 @@
+host: localhost
+adapter: mysql
+database: minisearchengine
+username: root
+password: root
+encoding: utf8
+pool: 10
