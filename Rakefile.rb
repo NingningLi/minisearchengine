@@ -2,6 +2,9 @@
 require "yaml"
 require "active_record"
 require "activerecord-import"
+require "redis"
+require "json"
+require "rack"
 
 ProjectRoot = File.dirname(File.absolute_path(__FILE__))
 connection_details = YAML::load(File.open('config/database.yml'))
@@ -39,6 +42,9 @@ end
 
 namespace :se do
   require "#{ProjectRoot}/app/crawler"
+  require "#{ProjectRoot}/app/searcher"
+  require "#{ProjectRoot}/app/searcher_page/searcher_page"
+
   Dir.glob(ProjectRoot + "/app/models/*.rb").each {|f| require f}    
 
   desc "爬页面"
@@ -46,4 +52,22 @@ namespace :se do
     ActiveRecord::Base.establish_connection(connection_details)
     Crawler.new(["http://guides.rubyonrails.org/"]).crawl
   end
+
+  desc "执行索引"
+  task :index do
+    ActiveRecord::Base.establish_connection(connection_details)
+    Crawler.index_pages
+  end
+
+  desc "搜索"
+  task :search do
+    ActiveRecord::Base.establish_connection(connection_details)
+    Rack::Handler::WEBrick.run SearcherPage.get_app, :Port => 9293
+
+    # results = Searcher.new.get_match_rows "rails sql"
+    # results.each do |row|
+    #   p row
+    # end
+  end
+
 end

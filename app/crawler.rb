@@ -6,6 +6,8 @@ require "uri"
 
 class Crawler
   #爬虫类
+  RedisClient = Redis.new :host => "localhost", :port => 6379  
+
   def initialize(pages, depth=2)
     @begin_pages = pages 
     @depth = depth
@@ -24,10 +26,8 @@ class Crawler
 
   
   def add_to_index plain_url, doc
-    #为每个网页建立索引
-    # return if Url.indexed? plain_url
-    # Url.create(url: plain_url).index(separate_words(get_plain_text(doc)))
-    p "Indexing page: #{plain_url}"
+    #为每个网页建立索引，通过消息队列的方式实现
+    RedisClient.rpush "page", {plain_url => separate_words(get_plain_text(doc))}.to_json
   end
 
 
@@ -37,6 +37,7 @@ class Crawler
   
   def fetch_page page, new_pages
     #抽取单个页面中的所有链接
+    p "Fetching Page: #{page}"
     begin; doc = Nokogiri::HTML(open(page))
     rescue Exception => e; p "fetching error: #{page}; message: #{e.message}"; return
     end
@@ -45,9 +46,7 @@ class Crawler
       next if not link.attributes.include? "href" or link["href"] == "#"
       begin; url = URI::join(page, link["href"].split("#")[0]).to_s
       rescue; next; end
-      new_pages.add(url) if url[0...4] == 'http' and not Url.indexed? url
-      #需要手动释放链接，每个线程或者进程自己会hold一个数据库链接，并且始终不会释放，并且其他的线程需要用到，这就可以关闭掉数据库，不然如果线程多了会导致其他的线程没有数据库链接可以使用
-      ActiveRecord::Base.connection.close
+      new_pages.add(url) if url[0...4] == 'http'
       # link_text = get_plain_text link
       # add_link_ref page, url, link_text
     end
@@ -56,11 +55,18 @@ class Crawler
   def crawl
     pages = @begin_pages
     @depth.times do |i|
-      new_pages = Set.new
-      threads = []
-      pages.each {|page| unless Url.indexed? page; threads << Thread.new(page) {|url| fetch_page(url, new_pages) } end; }
+      new_pages, threads = Set.new, []
+      pages.each {|page| threads << Thread.new(page) {|url| fetch_page(url, new_pages) }}
       threads.each {|t| t.join }
       pages = new_pages
+    end
+  end
+
+  def self.index_pages
+    while page_entry=RedisClient.rpop("page")
+      url, words = JSON.load(page_entry).first
+      p "Indexing page: #{url}"
+      Url.index url, words
     end
   end
 end
