@@ -4,6 +4,8 @@
     <title>result</title>
   </head>
   <body>
-    result
+    <% for url in urls %>
+      <li><a href="<%= url.url %>"><%= url.id %>: <%= url.url %></a></li>
+    <% end %>
   </body>
 </html>

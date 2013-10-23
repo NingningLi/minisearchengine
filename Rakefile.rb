@@ -50,7 +50,7 @@ namespace :se do
   desc "爬页面"
   task :crawl do
     ActiveRecord::Base.establish_connection(connection_details)
-    Crawler.new(["http://guides.rubyonrails.org/"]).crawl
+    Crawler.new(["https://docs.djangoproject.com/en/1.5/"]).crawl
   end
 
   desc "执行索引"
@@ -63,11 +63,6 @@ namespace :se do
   task :search do
     ActiveRecord::Base.establish_connection(connection_details)
     Rack::Handler::WEBrick.run SearcherPage.get_app, :Port => 9293
-
-    # results = Searcher.new.get_match_rows "rails sql"
-    # results.each do |row|
-    #   p row
-    # end
   end
 
 end
