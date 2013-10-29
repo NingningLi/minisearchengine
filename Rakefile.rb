@@ -50,7 +50,7 @@ namespace :se do
   desc "爬页面"
   task :crawl do
     ActiveRecord::Base.establish_connection(connection_details)
-    Crawler.new(["https://docs.djangoproject.com/en/1.5/"]).crawl
+    Crawler.new(["http://kqis.me/"]).crawl
   end
 
   desc "执行索引"

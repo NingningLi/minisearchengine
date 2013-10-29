@@ -7,9 +7,7 @@ class Url < ActiveRecord::Base
     def index url, words
       indexed, url_entry = indexed? url
       return if indexed
-      if url_entry.nil?
-        url_entry = Url.create(:url => url)
-      end
+      url_entry ||= Url.create(:url => url)
       word_locations = []
       words.each_with_index do |plain_word, windex|
         word = Word.where(word: plain_word ).first_or_create

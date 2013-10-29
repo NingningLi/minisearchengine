@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
+require "uri"
 class Searcher
   def get_match_rows q
     #从word_locations表中利用链接查询出所有的单词同在一个页面上的所有链接
     field_list, table_list, clause_list = 'w0.url_id', '', ''
     table_num = 0
     word_ids = []
-    q.split(/\s+/).each do |word|
+    URI.unescape(q).force_encoding("UTF-8").split(/\s+/).each do |word|
+      p word
       word_entry = Word.find_by_word(word)
-      
       unless word_entry.nil?
         word_ids << word_entry.id
         if table_num > 0
@@ -21,7 +22,6 @@ class Searcher
       end
     end
     full_query = "select %s from %s where %s" % [field_list, table_list, clause_list]
-    p full_query
     results = ActiveRecord::Base.connection().execute(full_query)
     rows = []
     results.each {|row| rows << row }
@@ -51,6 +51,7 @@ class Searcher
   end
 
   def location_score rows
+    #统计各个单词距离文档开始的位置，计算出最小的
     locations = rows.map{|r| [r[0], 1000000]}.inject({}) {|r,s| r.merge!({s[0] => s[1]})}
     rows.each {|row| loc = row[1..-1].inject(0){|sum, n| sum + n.to_i}; if loc < locations[row[0]]; locations[row[0]] = loc end}
     return normalize_scores(locations, true)

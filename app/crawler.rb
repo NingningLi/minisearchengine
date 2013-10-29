@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
 require "open-uri"
 require "nokogiri"
+require "rmmseg"
 require 'set'
 require "uri"
 
 class Crawler
   #爬虫类
   RedisClient = Redis.new :host => "localhost", :port => 6379  
+  RMMSeg::Dictionary.load_dictionaries
 
   def initialize(pages, depth=2)
     @begin_pages = pages 
@@ -21,7 +23,14 @@ class Crawler
 
   def separate_words text
     #将网页中的文字进行分词
-    text.split(/\W/).select {|w| !w.strip.empty?}
+    algor = RMMSeg::Algorithm.new(text)
+    words = []
+    loop do
+      token = algor.next_token
+      break if token.nil?
+      words << token.text.force_encoding("UTF-8")
+    end
+    words
   end
 
   
