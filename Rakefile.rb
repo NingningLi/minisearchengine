@@ -5,6 +5,7 @@ require "activerecord-import"
 require "redis"
 require "json"
 require "rack"
+require "irb"
 
 ProjectRoot = File.dirname(File.absolute_path(__FILE__))
 connection_details = YAML::load(File.open('config/database.yml'))
@@ -27,6 +28,11 @@ namespace :db do
     ActiveRecord::Base.connection.drop_database(connection_details.fetch('database'))
   end
 
+  desc "Data seeds"
+  task :seed do
+    Url.all.each {|url| PageRank.create(:url_id => url.id, :score => 1.0)}
+  end
+  
   tasks = Rake.application.instance_variable_get('@tasks')
   tasks.keys.each do |task_name| 
     next unless task_name.start_with? "db:"
@@ -47,6 +53,15 @@ namespace :se do
 
   Dir.glob(ProjectRoot + "/app/models/*.rb").each {|f| require f}    
 
+  desc "console"
+  task :console do
+    p "Starting Console..."
+    ActiveRecord::Base.establish_connection(connection_details)
+    ARGV.clear
+    IRB.start
+    exit
+  end
+    
   desc "爬页面"
   task :crawl do
     ActiveRecord::Base.establish_connection(connection_details)
@@ -56,9 +71,15 @@ namespace :se do
   desc "执行索引"
   task :index do
     ActiveRecord::Base.establish_connection(connection_details)
-    Crawler.index_pages
+    Crawler.index_pages.index_links
   end
 
+  desc "计算page_rank"
+  task :pagerank do
+    ActiveRecord::Base.establish_connection(connection_details)
+    Crawler.calculate_page_rank
+  end  
+  
   desc "搜索"
   task :search do
     ActiveRecord::Base.establish_connection(connection_details)

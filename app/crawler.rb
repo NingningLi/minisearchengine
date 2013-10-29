@@ -40,8 +40,8 @@ class Crawler
   end
 
 
-  def add_link_ref url_from, url_to, link_text
-    #添加一个网页到另一个网页的关联
+  def add_link_ref url_from, url_to
+    RedisClient.rpush "link", [url_from, url_to].to_json
   end
   
   def fetch_page page, new_pages
@@ -56,8 +56,7 @@ class Crawler
       begin; url = URI::join(page, link["href"].split("#")[0]).to_s
       rescue; next; end
       new_pages.add(url) if url[0...4] == 'http'
-      # link_text = get_plain_text link
-      # add_link_ref page, url, link_text
+      add_link_ref(page, url)
     end
   end
   
@@ -71,12 +70,40 @@ class Crawler
     end
   end
 
-  def self.index_pages
-    while page_entry=RedisClient.rpop("page")
-      url, words = JSON.load(page_entry).first
-      p "Indexing page: #{url}"
-      Url.index url, words
+  class << self
+    def index_pages
+      while page_entry=RedisClient.rpop("page")
+        url, words = JSON.load(page_entry).first
+        p "Indexing page: #{url}"
+        Url.index url, words
+      end
+      self
     end
+
+    def index_links
+      while link_entry=RedisClient.rpop("link")
+        from, to = JSON.load(link_entry)
+        Link.index from, to
+      end
+      self
+    end
+    
+    def calculate_page_rank iterations=20
+      iterations.times do |time|
+        Url.all.each do |url|
+          pr = 0.15          
+          Link.select("distinct from_id").find_all_by_to_id(url.id).each do |link|
+            page_rank = PageRank.find_by_url_id(link.from_id)
+            score = page_rank.score            
+            link_count = Link.find_all_by_from_id(link.from_id).count
+            pr += 0.85 * (score / link_count.to_f)
+          end
+          cur_pagerank = PageRank.find_by_url_id(url.id)
+          cur_pagerank.score = pr; cur_pagerank.save
+        end        
+      end
+    end
+    
   end
 end
   
