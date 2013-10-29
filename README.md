@@ -21,3 +21,31 @@ minisearchengine是一个很小的搜索引擎示例，它分为3个步骤来构
 PageRank算法： 这是谷歌提出的算法，当时google的崛起或多或少的与这个算法有关。它是通过利用外链（其他网页对此网页的链接数目）以及外链的宿主页面（指向搜索的页面链接所在的那个页面）的评价值，来计算需要搜索页面的评价值并进行的排序。
 
 ### minisearchengine的使用
+
+#### 安装
+安装并运行redis：
+
+	sudo apt-get install redis
+	nohup redis-server &
+
+下载minisearchengine并安装包：
+
+	git clone https://github.com/kimboqi/minisearchengine.git
+	cd minisearchengine
+	bundle install
+	
+打开minisearchengine/config/database.yml，配置mysql数据库，并运行：
+
+    rake db:create
+    rake db:migrate
+
+建立数据库后，在minisearchengine/Rakefile.rb中配置需要抓取的一些起始页面，然后运行：
+
+	rake se:crawl
+	rake se:index
+	
+如果页面多的话这个步骤是可以并行来做的。索引完成后就可以查询了：
+
+	rake se:search
+	
+打开浏览器输入127.0.0.1:9293，输入你要查询的单词就OK了。
