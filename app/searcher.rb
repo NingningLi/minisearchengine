@@ -56,7 +56,7 @@ class Searcher
     rows.each {|row| loc = row[1..-1].inject(0){|sum, n| sum + n.to_i}; if loc < locations[row[0]]; locations[row[0]] = loc end}
     return normalize_scores(locations, true)
   end
-
+  
   def distance_score rows
     if rows.count <= 2
       return rows.map{|r| [r[0], 1.0]}      
@@ -70,6 +70,19 @@ class Searcher
     end
     return normalize_scores(min_distance, true)
   end
+
+  def page_rank_score rows
+    page_ranks, normalized_page_ranks = {}, {}
+    rows.each do |row|
+      page_rank = PageRank.find_by_url_id(row[0])
+      page_ranks[row[0]] = page_rank.score      
+    end
+    max_rank = page_ranks.values.max    
+    page_ranks.to_a.each do |url_id, score|
+      normalized_page_ranks[url_id] = score.to_f / max_rank
+    end
+    normalized_page_ranks
+  end
   
   def get_scored_list(rows, word_ids)
     #获取链接的评分
@@ -77,8 +90,9 @@ class Searcher
     rows.each {|row| total_scores[row[0]] = 0}
     weights = [
                [1.0, frequency_score(rows)],
-               [1.5, location_score(rows)],
-               [3, distance_score(rows)]
+               [1.0, location_score(rows)],
+               [2, distance_score(rows)],
+               [3, page_rank_score(rows)]
               ]
     weights.each {|weight, scores| total_scores.keys.each {|url| total_scores[url] += weight * scores[url]}}
     p total_scores
